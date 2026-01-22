@@ -23,87 +23,63 @@ async function send() {
   const text = input.value.trim();
   if (!text) return;
 
-  // Reset input
+  // Bloquear UI
+  sendBtn.disabled = true;
+  input.disabled = true;
+
   input.value = "";
   input.style.height = "auto";
 
-  // Mostrar mensaje usuario
   addMessage(text, "user");
 
-  // Mensaje bot (placeholder)
   const botMsg = addMessage("🤔 Pensando…", "bot status");
 
   let res;
   try {
     res = await fetch("https://ollama.mteam.com.ar/", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "soporte",
         prompt: text,
-        stream: true
+        stream: false
       })
     });
   } catch (err) {
     botMsg.textContent = "❌ Error de conexión";
     botMsg.classList.remove("status");
     console.error(err);
+    desbloquearUI();
     return;
   }
 
-  if (!res.ok || !res.body) {
+  if (!res.ok) {
     botMsg.textContent = "❌ Error del servidor";
     botMsg.classList.remove("status");
+    desbloquearUI();
     return;
   }
 
-  botMsg.textContent = "⌨️ Escribiendo…";
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder("utf-8");
-
-  let buffer = "";
-  let output = "";
-
+  let data;
   try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      // Acumular chunk (NO parsear directo)
-      buffer += decoder.decode(value, { stream: true });
-
-      // Separar por líneas
-      const lines = buffer.split("\n");
-      buffer = lines.pop(); // guardar línea incompleta
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-
-        let json;
-        try {
-          json = JSON.parse(line);
-        } catch (e) {
-          // JSON incompleto → esperar más datos
-          continue;
-        }
-
-        if (json.response) {
-          output += json.response;
-          botMsg.textContent = output;
-          messages.scrollTop = messages.scrollHeight;
-        }
-
-        if (json.done) {
-          botMsg.classList.remove("status");
-        }
-      }
-    }
+    data = await res.json();
   } catch (err) {
-    console.error(err);
-    botMsg.textContent = "❌ Error procesando respuesta";
+    botMsg.textContent = "❌ Error leyendo respuesta";
     botMsg.classList.remove("status");
+    console.error(err);
+    desbloquearUI();
+    return;
   }
+
+  botMsg.textContent = data.response || "❌ Respuesta vacía";
+  botMsg.classList.remove("status");
+
+  desbloquearUI();
 }
+
+function desbloquearUI() {
+  sendBtn.disabled = false;
+  input.disabled = false;
+  input.focus();
+}
+
