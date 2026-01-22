@@ -2,6 +2,18 @@ const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 
+/**
+ * Historial de la conversación
+ * El primer mensaje SIEMPRE es el system prompt
+ */
+const conversation = [
+  {
+    role: "system",
+    content:
+      "Sos un asistente de soporte técnico senior. Respondé en español, de forma clara, profesional y concisa."
+  }
+];
+
 sendBtn.addEventListener("click", send);
 input.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) {
@@ -30,7 +42,19 @@ async function send() {
   input.value = "";
   input.style.height = "auto";
 
+  // Mostrar mensaje del usuario
   addMessage(text, "user");
+
+  // Guardar mensaje en el historial
+  conversation.push({
+    role: "user",
+    content: text
+  });
+
+  // Limitar historial (system + últimos 20 mensajes)
+  if (conversation.length > 21) {
+    conversation.splice(1, conversation.length - 21);
+  }
 
   const botMsg = addMessage("🤔 Pensando…", "bot status");
 
@@ -41,7 +65,7 @@ async function send() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "soporte",
-        prompt: text,
+        messages: conversation,
         stream: false
       })
     });
@@ -71,8 +95,19 @@ async function send() {
     return;
   }
 
-  botMsg.textContent = data.response || "❌ Respuesta vacía";
+  const reply =
+    data.message?.content ||
+    data.response ||
+    "❌ Respuesta vacía";
+
+  botMsg.textContent = reply;
   botMsg.classList.remove("status");
+
+  // Guardar respuesta del asistente en el historial
+  conversation.push({
+    role: "assistant",
+    content: reply
+  });
 
   desbloquearUI();
 }
@@ -82,4 +117,3 @@ function desbloquearUI() {
   input.disabled = false;
   input.focus();
 }
-
