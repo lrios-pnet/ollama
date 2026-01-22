@@ -16,25 +16,10 @@ marked.setOptions({
  */
 function normalizeMarkdown(text) {
   return text
-    // "* item" → "- item"
     .replace(/^\* /gm, "- ")
-    // línea en blanco antes de listas
     .replace(/([^\n])\n(- )/g, "$1\n\n$2")
-    // línea en blanco antes de títulos en negrita
     .replace(/([^\n])\n(\*\*)/g, "$1\n\n$2");
 }
-
-/**
- * Historial de conversación
- * El primer mensaje SIEMPRE es el system prompt
- */
-const conversation = [
-  {
-    role: "system",
-    content:
-      "Sos un asistente de soporte técnico senior. Respondé en español, de forma clara, profesional y concisa.",
-  },
-];
 
 sendBtn.addEventListener("click", send);
 input.addEventListener("keydown", (e) => {
@@ -76,17 +61,6 @@ async function send() {
   // Mostrar mensaje del usuario
   addMessage(text, "user");
 
-  // Guardar en historial
-  conversation.push({
-    role: "user",
-    content: text,
-  });
-
-  // Limitar historial (system + últimos 20 mensajes)
-  if (conversation.length > 21) {
-    conversation.splice(1, conversation.length - 21);
-  }
-
   const botMsg = addMessage("🤔 Pensando…", "bot status");
 
   let res;
@@ -95,16 +69,12 @@ async function send() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "soporte",
-        messages: conversation,
-        stream: false,
-        num_predict: 768,
+        message: text,
       }),
     });
   } catch (err) {
     botMsg.textContent = "❌ Error de conexión";
     botMsg.classList.remove("status");
-    console.error(err);
     desbloquearUI();
     return;
   }
@@ -122,21 +92,14 @@ async function send() {
   } catch (err) {
     botMsg.textContent = "❌ Error leyendo respuesta";
     botMsg.classList.remove("status");
-    console.error(err);
     desbloquearUI();
     return;
   }
 
-  const reply = data.message?.content || "❌ Respuesta vacía";
+  const reply = data.reply || "❌ Respuesta vacía";
 
   botMsg.innerHTML = marked.parse(normalizeMarkdown(reply));
   botMsg.classList.remove("status");
-
-  // Guardar respuesta del asistente
-  conversation.push({
-    role: "assistant",
-    content: reply,
-  });
 
   desbloquearUI();
 }
