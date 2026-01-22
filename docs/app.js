@@ -30,7 +30,7 @@ async function send() {
 
   const botMsg = addMessage("🤔 Pensando…", "bot status");
 
-  const res = await fetch("https://ollama.mteam.com.ar/api/generate", {
+  const res = await fetch("https://ollama.mteam.com.ar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
