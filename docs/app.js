@@ -34,7 +34,7 @@ async function send() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "soporte-senior",
+      model: "soporte",
       prompt: text,
       stream: true
     })
