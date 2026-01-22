@@ -25,11 +25,21 @@ input.addEventListener("keydown", e => {
 function addMessage(text, cls) {
   const div = document.createElement("div");
   div.className = `message ${cls}`;
-  div.textContent = text;
+
+  // Markdown → HTML
+  div.innerHTML = marked.parse(text);
+
   messages.appendChild(div);
+
+  // Highlight de código
+  div.querySelectorAll("pre code").forEach(block => {
+    hljs.highlightElement(block);
+  });
+
   messages.scrollTop = messages.scrollHeight;
   return div;
 }
+
 
 async function send() {
   const text = input.value.trim();
