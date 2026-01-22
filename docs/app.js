@@ -51,58 +51,61 @@ async function send() {
   const text = input.value.trim();
   if (!text) return;
 
-  // Bloquear UI
   sendBtn.disabled = true;
   input.disabled = true;
 
   input.value = "";
   input.style.height = "auto";
 
-  // Mostrar mensaje del usuario
   addMessage(text, "user");
 
   const botMsg = addMessage("🤔 Pensando…", "bot status");
 
-  let res;
+  let response;
   try {
-    res = await fetch("https://ollama.mteam.com.ar/", {
+    response = await fetch("https://ollama.mteam.com.ar/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: text,
-      }),
+      body: JSON.stringify({ message: text }),
     });
-  } catch (err) {
+  } catch {
     botMsg.textContent = "❌ Error de conexión";
     botMsg.classList.remove("status");
     desbloquearUI();
     return;
   }
 
-  if (!res.ok) {
+  if (!response.ok || !response.body) {
     botMsg.textContent = "❌ Error del servidor";
     botMsg.classList.remove("status");
     desbloquearUI();
     return;
   }
 
-  let data;
-  try {
-    data = await res.json();
-  } catch (err) {
-    botMsg.textContent = "❌ Error leyendo respuesta";
-    botMsg.classList.remove("status");
-    desbloquearUI();
-    return;
+  // Cambia estado cuando empieza el stream
+  botMsg.textContent = "✍️ Escribiendo…";
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+
+  let finalText = "";
+  botMsg.innerHTML = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value, { stream: true });
+    finalText += chunk;
+
+    botMsg.innerHTML = marked.parse(normalizeMarkdown(finalText));
+    messages.scrollTop = messages.scrollHeight;
   }
 
-  const reply = data.reply || "❌ Respuesta vacía";
-
-  botMsg.innerHTML = marked.parse(normalizeMarkdown(reply));
   botMsg.classList.remove("status");
-
   desbloquearUI();
 }
+
 
 function desbloquearUI() {
   sendBtn.disabled = false;
